@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(pxd-stl VERSION 0.1.0 LANGUAGES C CXX)
+project(auto-civitai-cpp VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 enable_testing()
@@ -18,10 +18,12 @@ enable_iwyu()
 set(PXD_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sources)
 
 set(PXD_HEADER_FILES
+    ${PXD_SOURCE_DIR}/dataset.hpp
 )
 
-set(PXD__SOURCE_FILES
+set(PXD_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${PXD_SOURCE_DIR}/dataset.cpp
 
     ${PXD_HEADER_FILES}
 )
@@ -43,13 +45,18 @@ set(COMMON_STD_HEADERS
     <fstream>
 )
 
+find_package(Arrow)
+find_package(Parquet)
+
 set(LIBS_TO_LINK
+    Arrow::arrow_shared
+    Parquet::parquet_shared
 )
 
 # ------------------------------------------------------------------------------------------------------
 # -- Project Static Library 
 
-add_executable(${PROJECT_NAME} ${PXD__SOURCE_FILES})
+add_executable(${PROJECT_NAME} ${PXD_SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} ${LIBS_TO_LINK})
 
