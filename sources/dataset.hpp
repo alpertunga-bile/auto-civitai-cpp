@@ -1,7 +1,7 @@
 #pragma once
 
 #include <arrow/api.h>
-#include <arrow/dataset/api.h>
+#include <arrow/io/api.h>
 
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
@@ -13,13 +13,17 @@ class Dataset
 public:
   static arrow::Result<std::shared_ptr<arrow::Table>> create_default_schema();
 
-  bool create();
+  void create(const char* dataset_name);
 
-  void write(const char* dataset_name);
+  void read_all();
+  void write();
+
+  inline arrow::Table* get_table() { return m_table->get(); }
 
 private:
   arrow::Result<std::shared_ptr<arrow::Table>> m_table;
   std::shared_ptr<arrow::Schema> m_schema;
-  arrow::Result<std::shared_ptr<arrow::fs::FileSystem>> m_fs;
+
+  std::string m_dataset_name;
 };
 }

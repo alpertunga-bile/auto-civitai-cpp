@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "auto-civitai-cpp debug launch",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/auto-civitai-cpp",
