@@ -6,9 +6,13 @@ int
 main()
 {
   pxd::Dataset dataset;
+  dataset.init("temp.parquet");
 
-  dataset.create("temp.parquet");
-  std::cout << dataset.get_table();
+  dataset.read();
+
+  dataset.add_row("kasjd", "ajhsjdhqw");
+
+  dataset.write();
 
   return 0;
 }
