@@ -8,16 +8,10 @@
 int
 main()
 {
-  /*
   pxd::Dataset dataset;
-  dataset.init("temp.parquet");
+  dataset.init("dataset/female_positive_prompts.parquet");
 
   dataset.read();
-
-  dataset.add_row("kasjd", "ajhsjdhqw");
-
-  dataset.write();
-  */
 
   auto res = cpr::Get(cpr::Url(
     "https://civitai.com/api/v1/images?limit=200&sort=Newest&period=AllTime"));
