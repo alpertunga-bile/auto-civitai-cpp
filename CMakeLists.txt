@@ -6,6 +6,7 @@ enable_testing()
 
 # ------------------------------------------------------------------------------------
 # -- GLOBAL DEFINITIONS
+set(JSON_BuildTests OFF CACHE INTERNAL "")
 
 include(setup.cmake)
 
@@ -29,6 +30,7 @@ set(PXD_SOURCE_FILES
 )
 
 include_directories(
+    third-party/json/single_include/nlohmann
 )
 
 set(COMMON_STD_HEADERS
@@ -47,10 +49,15 @@ set(COMMON_STD_HEADERS
 
 find_package(Arrow)
 find_package(Parquet)
+find_package(cpr)
+
+add_subdirectory(third-party/json)
 
 set(LIBS_TO_LINK
     Arrow::arrow_shared
     Parquet::parquet_shared
+    cpr::cpr
+    nlohmann_json::nlohmann_json
 )
 
 # ------------------------------------------------------------------------------------------------------
