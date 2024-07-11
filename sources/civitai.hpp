@@ -3,7 +3,6 @@
 #include <string>
 #include <unordered_set>
 
-namespace pxd {
 struct CivitaiVariables
 {
   int hour_end = 23;
@@ -17,6 +16,7 @@ struct CivitaiVariables
   std::unordered_set<std::string> unwanted_prompts;
 };
 
+namespace pxd {
 bool
 enhance(const std::string& dataset_vars_filepath,
         const std::string& dataset_filepath);
