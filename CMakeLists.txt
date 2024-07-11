@@ -20,6 +20,7 @@ set(PXD_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sources)
 
 set(PXD_HEADER_FILES
     ${PXD_SOURCE_DIR}/dataset.hpp
+    ${PXD_SOURCE_DIR}/civitai.hpp
 
     third-party/json/single_include/nlohmann/json.hpp
     third-party/fmt/include/fmt/core.h
@@ -29,6 +30,7 @@ set(PXD_HEADER_FILES
 set(PXD_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${PXD_SOURCE_DIR}/dataset.cpp
+    ${PXD_SOURCE_DIR}/civitai.cpp
 
     ${PXD_HEADER_FILES}
 )

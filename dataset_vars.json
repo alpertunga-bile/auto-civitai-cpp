@@ -1,0 +1,29 @@
+{
+    "hour_end": 23,
+    "minute_end": 30,
+    "image_limit": 200,
+    "sort": "Newest",
+    "period": "AllTime",
+    "nsfw": "All",
+    "start_cursor": "",
+    "wanted_prompts": [
+        "beautiful",
+        "female",
+        "woman",
+        "girl",
+        "masterpiece"
+    ],
+    "unwanted_prompts": [
+        "obese",
+        "fat",
+        "ugly",
+        "weird",
+        "creepy",
+        "loli",
+        "old woman",
+        "old",
+        "child",
+        "creature",
+        "kid"
+    ]
+}
