@@ -4,27 +4,13 @@
 #include "dataset.hpp"
 
 #include "cpr/cpr.h"
-
-#define JSON_TRY_USER if (true)
-#define JSON_CATCH_USER(exception) if (false)
-#define JSON_THROW_USER(exception)                                             \
-  {                                                                            \
-    fmt::println("Error in {} : {} (function {}) - {}",                        \
-                 __FILE__,                                                     \
-                 __LINE__,                                                     \
-                 __FUNCTION__,                                                 \
-                 exception.what());                                            \
-  }
-
 #include "nlohmann/json.hpp"
 
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-
-#include <unistd.h>
-
 #include <regex>
+#include <unistd.h>
 
 namespace pxd {
 
@@ -93,15 +79,18 @@ get_json_object(const CivitaiVariables& vars,
   return true;
 }
 
-void
-get_current_hour_minute(int& current_hour, int& current_minute)
+bool
+is_timeout(const int& hour_end, const int& minute_end)
 {
   const auto now = std::chrono::system_clock::now();
   const auto tt = std::chrono::system_clock::to_time_t(now);
   const auto local_tm = *localtime(&tt);
 
-  current_hour = local_tm.tm_hour;
-  current_minute = local_tm.tm_min;
+  int current_hour = local_tm.tm_hour;
+  int current_minute = local_tm.tm_min;
+
+  return ((current_hour == hour_end && current_minute < minute_end) ||
+          current_hour != hour_end);
 }
 
 void
@@ -208,14 +197,9 @@ enhance(const std::string& dataset_vars_filepath,
 
   std::string current_cursor = civitai_vars.start_cursor;
 
-  int current_hour, current_minute;
-  get_current_hour_minute(current_hour, current_minute);
-
   int check_error_counter = 0;
 
-  while ((current_hour == civitai_vars.hour_end &&
-          current_minute < civitai_vars.minute_end) ||
-         current_hour != civitai_vars.hour_end) {
+  while (is_timeout(civitai_vars.hour_end, civitai_vars.minute_end)) {
 
     std::string url;
     if (current_cursor == "") {
@@ -289,11 +273,8 @@ enhance(const std::string& dataset_vars_filepath,
 
     fmt::println("Waiting for 3 seconds ...");
     sleep(3);
-
-    get_current_hour_minute(current_hour, current_minute);
   }
 
   return true;
 }
-
 }

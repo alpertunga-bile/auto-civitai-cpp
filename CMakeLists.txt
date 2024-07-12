@@ -41,15 +41,12 @@ include_directories(
 )
 
 set(COMMON_STD_HEADERS
-    <stdlib.h>
-    <cstdint>
-    <vector>
-    <algorithm>
-    <cassert>
-    <utility>
-    <cstring>
-
-    # Logger is using these headers
+    <string>
+    <unordered_set>
+    <unordered_map>
+    <regex>
+    <unistd.h>
+    <chrono>
     <filesystem>
     <fstream>
 )
