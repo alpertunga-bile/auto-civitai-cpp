@@ -1,15 +1,30 @@
 #include "civitai.hpp"
 
+#include "core.h"
 #include "dataset.hpp"
 
 #include "cpr/cpr.h"
-#include "nlohmann/json.hpp"
 
-#include "format.h"
+#define JSON_TRY_USER if (true)
+#define JSON_CATCH_USER(exception) if (false)
+#define JSON_THROW_USER(exception)                                             \
+  {                                                                            \
+    fmt::println("Error in {} : {} (function {}) - {}",                        \
+                 __FILE__,                                                     \
+                 __LINE__,                                                     \
+                 __FUNCTION__,                                                 \
+                 exception.what());                                            \
+  }
+
+#include "nlohmann/json.hpp"
 
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+
+#include <unistd.h>
+
+#include <regex>
 
 namespace pxd {
 
@@ -58,17 +73,15 @@ get_url(const CivitaiVariables& vars)
     url = fmt::format("{}&nsfw={}", url, vars.nsfw);
   }
 
-  if (vars.start_cursor != "") {
-    url = fmt::format("{}&cursor={}", url, vars.start_cursor);
-  }
-
   return url;
 }
 
 bool
-get_json_object(const CivitaiVariables& vars, nlohmann::json& json_object)
+get_json_object(const CivitaiVariables& vars,
+                const std::string& url,
+                nlohmann::json& json_object)
 {
-  auto res = cpr::Get(cpr::Url(get_url(vars)));
+  auto res = cpr::Get(cpr::Url(url));
 
   if (res.status_code != 200) {
     fmt::println("HTTP Get function is not worked");
@@ -80,35 +93,12 @@ get_json_object(const CivitaiVariables& vars, nlohmann::json& json_object)
   return true;
 }
 
-bool
-get_dataset_variables(const nlohmann::json& json_file,
-                      int image_index,
-                      std::string& prompt,
-                      std::string& media_url)
-{
-  try {
-    prompt = json_file["items"][image_index]["meta"]["prompt"];
-  } catch (const std::exception& e) {
-    fmt::println("Can't get the prompt");
-    return false;
-  }
-
-  try {
-    media_url = json_file["items"][image_index]["url"];
-  } catch (const std::exception& e) {
-    fmt::println("Can't get the media_url");
-    return false;
-  }
-
-  return true;
-}
-
 void
 get_current_hour_minute(int& current_hour, int& current_minute)
 {
   const auto now = std::chrono::system_clock::now();
-  auto tt = std::chrono::system_clock::to_time_t(now);
-  auto local_tm = *localtime(&tt);
+  const auto tt = std::chrono::system_clock::to_time_t(now);
+  const auto local_tm = *localtime(&tt);
 
   current_hour = local_tm.tm_hour;
   current_minute = local_tm.tm_min;
@@ -140,6 +130,64 @@ print_vars(const CivitaiVariables& vars)
   fmt::print("\n{:#^100}\n", "");
 }
 
+std::string
+string_replace(const std::string& str,
+               const std::string& old_str,
+               const std::string& new_str)
+{
+  return std::regex_replace(str, std::regex(old_str), new_str);
+}
+
+std::string
+preprocess(const std::string& str)
+{
+  std::regex remove_lora_regex(",?\\s*<.+?>:?[0-9]*\\.?[0-9]*");
+  std::regex remove_nonprompt_scalars_regex(",\\s*:[0-9]*\\.?[0-9]+");
+
+  std::string temp_str = std::regex_replace(str, remove_lora_regex, "");
+  temp_str = string_replace(temp_str, "\n", ", ");
+  temp_str = string_replace(temp_str, "\t", " ");
+  temp_str = std::regex_replace(temp_str, remove_nonprompt_scalars_regex, "");
+
+  return temp_str;
+}
+
+bool
+check_if_contains_word(const std::unordered_set<std::string>& word_list,
+                       const std::string& str)
+{
+  std::regex delete_nonwords("[^a-zA-Z]+");
+  std::string pure_string = std::regex_replace(str, delete_nonwords, " ");
+
+  for (auto& word : word_list) {
+    std::regex find_word_regex(fmt::format("\\b({})\\b", word));
+    if (std::regex_search(
+          pure_string.begin(), pure_string.end(), find_word_regex)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool
+check_prompt(const std::string& prompt,
+             const std::unordered_set<std::string>& wanted_prompts,
+             const std::unordered_set<std::string>& unwanted_prompts)
+{
+  std::string processed_prompt = preprocess(prompt);
+
+  if (check_if_contains_word(unwanted_prompts, processed_prompt)) {
+    return false;
+  }
+
+  if (check_if_contains_word(wanted_prompts, processed_prompt)) {
+    return true;
+  }
+
+  return false;
+}
+
 bool
 enhance(const std::string& dataset_vars_filepath,
         const std::string& dataset_filepath)
@@ -158,16 +206,92 @@ enhance(const std::string& dataset_vars_filepath,
 
   print_vars(civitai_vars);
 
-  nlohmann::json json_object;
-
-  if (!get_json_object(civitai_vars, json_object)) {
-    fmt::println("Can't create the json object");
-    return false;
-  }
+  std::string current_cursor = civitai_vars.start_cursor;
 
   int current_hour, current_minute;
-
   get_current_hour_minute(current_hour, current_minute);
+
+  int check_error_counter = 0;
+
+  while ((current_hour == civitai_vars.hour_end &&
+          current_minute < civitai_vars.minute_end) ||
+         current_hour != civitai_vars.hour_end) {
+
+    std::string url;
+    if (current_cursor == "") {
+      url = get_url(civitai_vars);
+    } else {
+      url = fmt::format("{}&cursor={}", get_url(civitai_vars), current_cursor);
+    }
+
+    nlohmann::json json_object;
+
+    while (check_error_counter != 3 &&
+           !get_json_object(civitai_vars, url, json_object)) {
+      fmt::println("Can't create the json object | Trying again ...");
+      sleep(5);
+      check_error_counter++;
+    }
+
+    if (check_error_counter == 3) {
+      fmt::println("Loop is detected at {} cursor | Exiting ...",
+                   current_cursor);
+      return false;
+    }
+
+    fmt::println("Current cursor : {}", current_cursor);
+
+    if (!json_object.contains("items")) {
+      fmt::println("Json file is empty");
+      return false;
+    }
+
+    int prompt_size = json_object["items"].size();
+
+    for (int i = 0; i < prompt_size; ++i) {
+      if (!json_object["items"][i].contains("meta")) {
+        continue;
+      }
+
+      if (!json_object["items"][i]["meta"].contains("prompt")) {
+        continue;
+      }
+
+      std::string prompt = json_object["items"][i]["meta"]["prompt"];
+      std::string media_url = json_object["items"][i]["url"];
+
+      if (!check_prompt(prompt,
+                        civitai_vars.wanted_prompts,
+                        civitai_vars.unwanted_prompts)) {
+        continue;
+      }
+
+      std::string processed_prompt = preprocess(prompt);
+
+      dataset.add_row(processed_prompt, media_url);
+    }
+
+    dataset.write();
+
+    if (!json_object["metadata"].contains("nextCursor")) {
+      fmt::println("Can't get the next cursor");
+      return false;
+    }
+
+    if (json_object["metadata"]["nextCursor"].is_number_unsigned()) {
+      current_cursor = std::to_string(
+        json_object["metadata"]["nextCursor"].get<unsigned int>());
+    } else if (json_object["metadata"]["nextCursor"].is_string()) {
+      current_cursor = json_object["metadata"]["nextCursor"];
+    }
+
+    check_error_counter = 0;
+
+    fmt::println("Waiting for 3 seconds ...");
+    sleep(3);
+
+    get_current_hour_minute(current_hour, current_minute);
+  }
 
   return true;
 }

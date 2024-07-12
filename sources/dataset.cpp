@@ -57,11 +57,13 @@ Dataset::read()
   add_to<arrow::StringArray>(media_urls, 1, table);
 
   for (int i = 0; i < prompts.length(); ++i) {
-    if (dataset_vals.find(media_urls.GetView(i)) != dataset_vals.end()) {
+    if (dataset_vals.find(std::string(media_urls.GetView(i))) !=
+        dataset_vals.end()) {
       continue;
     }
 
-    dataset_vals[media_urls.GetView(i)] = prompts.GetView(i);
+    dataset_vals[std::string(media_urls.GetView(i))] =
+      std::string(prompts.GetView(i));
   }
 
   prompts.Reset();
@@ -80,7 +82,7 @@ Dataset::write()
 }
 
 void
-Dataset::add_row(std::string_view prompt, std::string_view media_url)
+Dataset::add_row(std::string& prompt, std::string& media_url)
 {
   if (dataset_vals.find(media_url) != dataset_vals.end()) {
     return;

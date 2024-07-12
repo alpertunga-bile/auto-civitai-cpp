@@ -54,12 +54,13 @@ set(COMMON_STD_HEADERS
     <fstream>
 )
 
+add_subdirectory(third-party/json)
+add_subdirectory(third-party/fmt)
+
 find_package(Arrow)
 find_package(Parquet)
 find_package(cpr)
 
-add_subdirectory(third-party/json)
-add_subdirectory(third-party/fmt)
 
 set(LIBS_TO_LINK
     Arrow::arrow_shared

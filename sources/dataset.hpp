@@ -18,7 +18,7 @@ public:
   void read();
   void write();
 
-  void add_row(std::string_view prompt, std::string_view media_url);
+  void add_row(std::string& prompt, std::string& media_url);
 
 private:
   arrow::Result<std::shared_ptr<arrow::Table>> create();
@@ -32,7 +32,7 @@ private:
   arrow::StringBuilder prompts;
   arrow::StringBuilder media_urls;
 
-  std::unordered_map<std::string_view, std::string_view> dataset_vals;
+  std::unordered_map<std::string, std::string> dataset_vals;
 
   std::string m_dataset_name;
 };
