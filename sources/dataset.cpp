@@ -82,6 +82,26 @@ Dataset::write()
 }
 
 void
+Dataset::print(int row_count)
+{
+  int counter = 0;
+
+  fmt::println("Total rows : {}", dataset_vals.size());
+
+  fmt::println("{:^73} | {:^70}", "Prompt", "Media Url");
+
+  for (auto& [prompt, media_url] : dataset_vals) {
+    if (counter == row_count) {
+      break;
+    }
+
+    fmt::println(
+      "{:70}... | {:70}...", prompt.substr(0, 70), media_url.substr(0, 70));
+    counter++;
+  }
+}
+
+void
 Dataset::add_row(std::string& prompt, std::string& media_url)
 {
   if (dataset_vals.find(media_url) != dataset_vals.end()) {

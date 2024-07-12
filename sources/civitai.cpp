@@ -80,7 +80,7 @@ get_json_object(const CivitaiVariables& vars,
 }
 
 bool
-is_timeout(const int& hour_end, const int& minute_end)
+can_continue(const int& hour_end, const int& minute_end)
 {
   const auto now = std::chrono::system_clock::now();
   const auto tt = std::chrono::system_clock::to_time_t(now);
@@ -132,10 +132,14 @@ preprocess(const std::string& str)
 {
   std::regex remove_lora_regex(",?\\s*<.+?>:?[0-9]*\\.?[0-9]*");
   std::regex remove_nonprompt_scalars_regex(",\\s*:[0-9]*\\.?[0-9]+");
+  std::regex remove_nonpromptcommas_regex("(,\\s){2,}");
+  std::regex remove_multiwhitespaces_regex("\\s+");
 
   std::string temp_str = std::regex_replace(str, remove_lora_regex, "");
   temp_str = string_replace(temp_str, "\n", ", ");
   temp_str = string_replace(temp_str, "\t", " ");
+  temp_str = std::regex_replace(temp_str, remove_multiwhitespaces_regex, " ");
+  temp_str = std::regex_replace(temp_str, remove_nonpromptcommas_regex, ", ");
   temp_str = std::regex_replace(temp_str, remove_nonprompt_scalars_regex, "");
 
   return temp_str;
@@ -199,7 +203,7 @@ enhance(const std::string& dataset_vars_filepath,
 
   int check_error_counter = 0;
 
-  while (is_timeout(civitai_vars.hour_end, civitai_vars.minute_end)) {
+  while (can_continue(civitai_vars.hour_end, civitai_vars.minute_end)) {
 
     std::string url;
     if (current_cursor == "") {
@@ -271,8 +275,8 @@ enhance(const std::string& dataset_vars_filepath,
 
     check_error_counter = 0;
 
-    fmt::println("Waiting for 3 seconds ...");
-    sleep(3);
+    fmt::println("Waiting for 5 seconds ...");
+    sleep(5);
   }
 
   return true;

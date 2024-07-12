@@ -17,6 +17,7 @@ public:
 
   void read();
   void write();
+  void print(int row_count = 5);
 
   void add_row(std::string& prompt, std::string& media_url);
 

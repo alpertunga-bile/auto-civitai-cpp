@@ -54,6 +54,13 @@ set(COMMON_STD_HEADERS
 add_subdirectory(third-party/json)
 add_subdirectory(third-party/fmt)
 
+include(FetchContent)
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+)
+FetchContent_MakeAvailable(argparse)
+
 find_package(Arrow)
 find_package(Parquet)
 find_package(cpr)
@@ -65,6 +72,7 @@ set(LIBS_TO_LINK
     cpr::cpr
     nlohmann_json::nlohmann_json
     fmt::fmt
+    argparse
 )
 
 # ------------------------------------------------------------------------------------------------------
