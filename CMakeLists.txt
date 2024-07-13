@@ -16,15 +16,16 @@ set_cxx(20)
 enable_avx2()
 enable_iwyu()
 
+set(PXD_THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
 set(PXD_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sources)
 
 set(PXD_HEADER_FILES
     ${PXD_SOURCE_DIR}/dataset.hpp
     ${PXD_SOURCE_DIR}/civitai.hpp
 
-    third-party/json/single_include/nlohmann/json.hpp
-    third-party/fmt/include/fmt/core.h
-    third-party/fmt/include/fmt/os.h
+    ${PXD_THIRD_PARTY_DIR}/json/single_include/nlohmann/json.hpp
+    ${PXD_THIRD_PARTY_DIR}/fmt/include/fmt/core.h
+    ${PXD_THIRD_PARTY_DIR}/fmt/include/fmt/os.h
 )
 
 set(PXD_SOURCE_FILES
@@ -36,8 +37,8 @@ set(PXD_SOURCE_FILES
 )
 
 include_directories(
-    third-party/json/single_include/nlohmann
-    third-party/fmt/include/fmt 
+    ${PXD_THIRD_PARTY_DIR}/json/single_include/nlohmann
+    ${PXD_THIRD_PARTY_DIR}/fmt/include/fmt 
 )
 
 set(COMMON_STD_HEADERS
@@ -51,8 +52,8 @@ set(COMMON_STD_HEADERS
     <fstream>
 )
 
-add_subdirectory(third-party/json)
-add_subdirectory(third-party/fmt)
+add_subdirectory(${PXD_THIRD_PARTY_DIR}/json)
+add_subdirectory(${PXD_THIRD_PARTY_DIR}/fmt)
 
 include(FetchContent)
 FetchContent_Declare(

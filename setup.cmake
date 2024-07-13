@@ -36,4 +36,3 @@ function(enable_iwyu)
     endif(NOT WIN32)
 endfunction(enable_iwyu)
 
-set(PXD_THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
