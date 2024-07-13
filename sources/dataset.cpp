@@ -7,21 +7,19 @@ namespace pxd {
 arrow::Result<std::shared_ptr<arrow::Table>>
 Dataset::create()
 {
-  arrow::Status status;
+  m_status = m_prompts.Reserve(m_dataset_vals.size());
+  m_status = m_media_urls.Reserve(m_dataset_vals.size());
 
-  status = prompts.Reserve(dataset_vals.size());
-  status = media_urls.Reserve(dataset_vals.size());
-
-  for (auto& [prompt, media_url] : dataset_vals) {
-    status = prompts.Append(prompt);
-    status = media_urls.Append(media_url);
+  for (auto& [prompt, media_url] : m_dataset_vals) {
+    m_status = m_prompts.Append(prompt);
+    m_status = m_media_urls.Append(media_url);
   }
 
   std::shared_ptr<arrow::Array> prompt_arr;
-  status = prompts.Finish(&prompt_arr);
+  m_status = m_prompts.Finish(&prompt_arr);
 
   std::shared_ptr<arrow::Array> media_urls_arr;
-  status = media_urls.Finish(&media_urls_arr);
+  m_status = m_media_urls.Finish(&media_urls_arr);
 
   auto schema =
     arrow::schema({ arrow::field("prompt", arrow::utf8(), false),
@@ -47,27 +45,27 @@ Dataset::read()
     arrow::io::ReadableFile::Open(m_dataset_name, arrow::default_memory_pool());
 
   std::unique_ptr<parquet::arrow::FileReader> reader;
-  auto status =
+  m_status =
     parquet::arrow::OpenFile(*file, arrow::default_memory_pool(), &reader);
 
   std::shared_ptr<arrow::Table> table;
-  status = reader->ReadTable(&table);
+  m_status = reader->ReadTable(&table);
 
-  add_to<arrow::StringArray>(prompts, 0, table);
-  add_to<arrow::StringArray>(media_urls, 1, table);
+  add_to<arrow::StringArray>(m_prompts, 0, table);
+  add_to<arrow::StringArray>(m_media_urls, 1, table);
 
-  for (int i = 0; i < prompts.length(); ++i) {
-    if (dataset_vals.find(std::string(media_urls.GetView(i))) !=
-        dataset_vals.end()) {
+  for (int i = 0; i < m_prompts.length(); ++i) {
+    if (m_dataset_vals.find(std::string(m_media_urls.GetView(i))) !=
+        m_dataset_vals.end()) {
       continue;
     }
 
-    dataset_vals[std::string(media_urls.GetView(i))] =
-      std::string(prompts.GetView(i));
+    m_dataset_vals[std::string(m_media_urls.GetView(i))] =
+      std::string(m_prompts.GetView(i));
   }
 
-  prompts.Reset();
-  media_urls.Reset();
+  m_prompts.Reset();
+  m_media_urls.Reset();
 }
 
 void
@@ -77,7 +75,7 @@ Dataset::write()
 
   auto table = create();
 
-  auto status = parquet::arrow::WriteTable(
+  m_status = parquet::arrow::WriteTable(
     *table->get(), arrow::default_memory_pool(), *file);
 }
 
@@ -86,11 +84,11 @@ Dataset::print(int row_count)
 {
   int counter = 0;
 
-  fmt::println("Total rows : {}", dataset_vals.size());
+  fmt::println("Total rows : {}", m_dataset_vals.size());
 
   fmt::println("{:^73} | {:^70}", "Prompt", "Media Url");
 
-  for (auto& [prompt, media_url] : dataset_vals) {
+  for (auto& [prompt, media_url] : m_dataset_vals) {
     if (counter == row_count) {
       break;
     }
@@ -104,10 +102,10 @@ Dataset::print(int row_count)
 void
 Dataset::add_row(std::string& prompt, std::string& media_url)
 {
-  if (dataset_vals.find(media_url) != dataset_vals.end()) {
+  if (m_dataset_vals.find(media_url) != m_dataset_vals.end()) {
     return;
   }
 
-  dataset_vals[media_url] = prompt;
+  m_dataset_vals[media_url] = prompt;
 }
 }

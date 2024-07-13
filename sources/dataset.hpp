@@ -30,10 +30,12 @@ private:
               std::shared_ptr<arrow::Table> table);
 
 private:
-  arrow::StringBuilder prompts;
-  arrow::StringBuilder media_urls;
+  arrow::Status m_status;
 
-  std::unordered_map<std::string, std::string> dataset_vals;
+  arrow::StringBuilder m_prompts;
+  arrow::StringBuilder m_media_urls;
+
+  std::unordered_map<std::string, std::string> m_dataset_vals;
 
   std::string m_dataset_name;
 };

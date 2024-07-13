@@ -63,9 +63,9 @@ get_url(const CivitaiVariables& vars)
 }
 
 bool
-get_json_object(const CivitaiVariables& vars,
-                const std::string& url,
-                nlohmann::json& json_object)
+get_json_object_from_url(const CivitaiVariables& vars,
+                         const std::string& url,
+                         nlohmann::json& json_object)
 {
   auto res = cpr::Get(cpr::Url(url));
 
@@ -181,6 +181,90 @@ check_prompt(const std::string& prompt,
   return false;
 }
 
+CivitaiVariables
+get_civitai_variables(const std::string& dataset_vars_filepath)
+{
+  CivitaiVariables vars;
+
+  if (!set_civitai_variables(dataset_vars_filepath, vars)) {
+    fmt::println("Can't get the civitai variables");
+    return vars;
+  }
+
+  return vars;
+}
+
+void
+add_to_dataset(const nlohmann::json& json_object,
+               pxd::Dataset& dataset,
+               const CivitaiVariables& civitai_vars)
+{
+  int prompt_size = json_object["items"].size();
+
+  for (int i = 0; i < prompt_size; ++i) {
+    if (!json_object["items"][i].contains("meta")) {
+      continue;
+    }
+
+    if (!json_object["items"][i]["meta"].contains("prompt")) {
+      continue;
+    }
+
+    std::string prompt = json_object["items"][i]["meta"]["prompt"];
+    std::string media_url = json_object["items"][i]["url"];
+
+    if (!check_prompt(
+          prompt, civitai_vars.wanted_prompts, civitai_vars.unwanted_prompts)) {
+      continue;
+    }
+
+    std::string processed_prompt = preprocess(prompt);
+
+    dataset.add_row(processed_prompt, media_url);
+  }
+}
+
+bool
+get_json_object(const CivitaiVariables& civitai_vars,
+                const std::string& url,
+                nlohmann::json& json_object)
+{
+
+  int check_error_counter = 0;
+
+  while (check_error_counter != 3 &&
+         !get_json_object_from_url(civitai_vars, url, json_object)) {
+    fmt::println("Can't create the json object | Trying again ...");
+    sleep(5);
+    check_error_counter++;
+  }
+
+  if (check_error_counter == 3) {
+    fmt::println("Loop is detected | Exiting ...");
+    return false;
+  }
+
+  return true;
+}
+
+bool
+get_next_cursor(nlohmann::json& json_object, std::string& current_cursor)
+{
+  if (!json_object["metadata"].contains("nextCursor")) {
+    fmt::println("Can't get the next cursor");
+    return false;
+  }
+
+  if (json_object["metadata"]["nextCursor"].is_number_unsigned()) {
+    current_cursor =
+      std::to_string(json_object["metadata"]["nextCursor"].get<unsigned int>());
+  } else if (json_object["metadata"]["nextCursor"].is_string()) {
+    current_cursor = json_object["metadata"]["nextCursor"];
+  }
+
+  return true;
+}
+
 bool
 enhance(const std::string& dataset_vars_filepath,
         const std::string& dataset_filepath)
@@ -190,21 +274,12 @@ enhance(const std::string& dataset_vars_filepath,
 
   dataset.read();
 
-  CivitaiVariables civitai_vars;
-
-  if (!set_civitai_variables(dataset_vars_filepath, civitai_vars)) {
-    fmt::println("Can't get the civitai variables");
-    return false;
-  }
-
+  CivitaiVariables civitai_vars = get_civitai_variables(dataset_vars_filepath);
   print_vars(civitai_vars);
 
   std::string current_cursor = civitai_vars.start_cursor;
 
-  int check_error_counter = 0;
-
   while (can_continue(civitai_vars.hour_end, civitai_vars.minute_end)) {
-
     std::string url;
     if (current_cursor == "") {
       url = get_url(civitai_vars);
@@ -214,66 +289,19 @@ enhance(const std::string& dataset_vars_filepath,
 
     nlohmann::json json_object;
 
-    while (check_error_counter != 3 &&
-           !get_json_object(civitai_vars, url, json_object)) {
-      fmt::println("Can't create the json object | Trying again ...");
-      sleep(5);
-      check_error_counter++;
-    }
-
-    if (check_error_counter == 3) {
-      fmt::println("Loop is detected at {} cursor | Exiting ...",
-                   current_cursor);
+    if (!get_json_object(civitai_vars, url, json_object)) {
       return false;
     }
 
     fmt::println("Current cursor : {}", current_cursor);
 
-    if (!json_object.contains("items")) {
-      fmt::println("Json file is empty");
-      return false;
-    }
-
-    int prompt_size = json_object["items"].size();
-
-    for (int i = 0; i < prompt_size; ++i) {
-      if (!json_object["items"][i].contains("meta")) {
-        continue;
-      }
-
-      if (!json_object["items"][i]["meta"].contains("prompt")) {
-        continue;
-      }
-
-      std::string prompt = json_object["items"][i]["meta"]["prompt"];
-      std::string media_url = json_object["items"][i]["url"];
-
-      if (!check_prompt(prompt,
-                        civitai_vars.wanted_prompts,
-                        civitai_vars.unwanted_prompts)) {
-        continue;
-      }
-
-      std::string processed_prompt = preprocess(prompt);
-
-      dataset.add_row(processed_prompt, media_url);
-    }
+    add_to_dataset(json_object, dataset, civitai_vars);
 
     dataset.write();
 
-    if (!json_object["metadata"].contains("nextCursor")) {
-      fmt::println("Can't get the next cursor");
+    if (!get_next_cursor(json_object, current_cursor)) {
       return false;
     }
-
-    if (json_object["metadata"]["nextCursor"].is_number_unsigned()) {
-      current_cursor = std::to_string(
-        json_object["metadata"]["nextCursor"].get<unsigned int>());
-    } else if (json_object["metadata"]["nextCursor"].is_string()) {
-      current_cursor = json_object["metadata"]["nextCursor"];
-    }
-
-    check_error_counter = 0;
 
     fmt::println("Waiting for 5 seconds ...");
     sleep(5);
